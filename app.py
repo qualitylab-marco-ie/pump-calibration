@@ -13,7 +13,7 @@ logging.basicConfig(
 
 # Set up GPIO pin 27 as an OUTPUT pin for controlling the pump relay
 relay_pin = 27 # Connect relay on pin 13
-relayCarbPump = OutputDevice(relay_pin)
+relayCarbPump = OutputDevice(relay_pin, active_high=False)
 
 # Set up GPIO pin 17 as an INPUT pin for the flow sensor signal
 signal_pin = 17  # The GPIO pin connected to the flow sensor PIN 11
@@ -41,10 +41,10 @@ def monitor_flow_rate(duration=60, interval=10):
     global pulse_count, total_volume
 
     try:
-        relayCarbPump.on()  # Turn on the pump relay
-        time.sleep(1)  # Wait for 1 second to allow the pump to stabilize
-
         while True:
+            relayCarbPump.on()  # Turn on the pump relay
+            time.sleep(1)  # Wait for 1 second to allow the pump to stabilize
+
             pulse_count = 0  # Reset pulse count for the next cycle
             start_time = time.time()  # Start measuring the time for this cycle
 
@@ -65,7 +65,9 @@ def monitor_flow_rate(duration=60, interval=10):
             print(msg)
             logging.debug(msg)
 
+            relayCarbPump.off()
             time.sleep(interval)
+
     except KeyboardInterrupt:
         print("Stopped by user.")  # Handle user interrupt (Ctrl+C) to stop the program
     except Exception as e:
