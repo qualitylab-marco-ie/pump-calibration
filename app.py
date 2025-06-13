@@ -2,6 +2,7 @@ import time
 import logging
 
 from gpiozero import DigitalInputDevice, OutputDevice  # Import the gpiozero library to interact with GPIO pins
+from terminal_color import TerminalColor
 
 # Set up basic configuration for logging
 logging.basicConfig(
@@ -12,12 +13,17 @@ logging.basicConfig(
 )
 
 # Set up GPIO pin 27 as an OUTPUT pin for controlling the pump relay
-relay_pin = 27 # Connect relay on pin 13
+relay_pin = 17 # Connect relay on pin 13
 relayCarbPump = OutputDevice(relay_pin, active_high=False)
+relay_pin2 = 19 # Connect relay on pin 13
+relay2 = OutputDevice(relay_pin2, active_high=False)
+
+FLOW_PINS = [25, 24]  # Replace with actual GPIOs
+RELAY_PINS = [26,19,13,17]   # Replace with actual GPIOs
 
 # Set up GPIO pin 17 as an INPUT pin for the flow sensor signal
-signal_pin = 17  # The GPIO pin connected to the flow sensor PIN 11
-pulses_per_liter = 450  # Set this to the correct value based on your flow sensor's datasheet
+signal_pin = 25 # The GPIO pin connected to the flow sensor PIN 11
+pulses_per_liter = 537  # Set this to the correct value based on your flow sensor's datasheet
 
 # Create an instance of the DigitalInputDevice to monitor the flow sensor's pulses
 flow_sensor = DigitalInputDevice(signal_pin, pull_up=True)  # Using pull-up resistor
@@ -30,7 +36,7 @@ def on_pulse():
     """Callback function to increment pulse count whenever a pulse is detected."""
     global pulse_count
     pulse_count += 1  # Increment pulse count each time the flow sensor is activated
-    print(f"Pulse count: {pulse_count}")
+    # print(f"Pulse count: {pulse_count}")
 
 # Bind the on_pulse function to be called when a pulse is detected
 flow_sensor.when_activated = on_pulse
@@ -41,8 +47,9 @@ def monitor_flow_rate(duration=60, interval=10):
     global pulse_count, total_volume
 
     try:
-        while True:
-            relayCarbPump.on()  # Turn on the pump relay
+        while True:            
+            relayCarbPump.on()  # Turn on the pump relay            
+            relay2.off()
             time.sleep(1)  # Wait for 1 second to allow the pump to stabilize
 
             pulse_count = 0  # Reset pulse count for the next cycle
@@ -60,12 +67,21 @@ def monitor_flow_rate(duration=60, interval=10):
             volume = pulse_count / pulses_per_liter
             total_volume += volume  # Accumulate the total volume over time
 
-            msg = f"PULSE COUNT IN: {elapsed_time:.2f}s: {pulse_count}"
+            msg = f"PULSE COUNT IN: {elapsed_time:.2f}s: {pulse_count}/{volume:.3f} ml"
             
-            print(msg)
+            # print(msg)
+            TerminalColor.print_colored("PULSE COUNT CALIBRATION", "green")
+            TerminalColor.print_colored(f"DURATION: {elapsed_time:.2f}", "yellow")
+            TerminalColor.print_colored(f"PULSE: {pulse_count}", "red")
+            TerminalColor.print_colored(f"VOLUME: {volume:.3f} ml", "blue")
+            TerminalColor.print_colored(msg, "green")
             logging.debug(msg)
 
             relayCarbPump.off()
+            relay2.off()
+            if interval == -1:
+                exit()
+            
             time.sleep(interval)
 
     except KeyboardInterrupt:
@@ -78,4 +94,4 @@ def monitor_flow_rate(duration=60, interval=10):
         flow_sensor.close()  # Close the flow sensor properly
 
 # Call the monitor_flow_rate function with a 1-second duration for flow rate calculation
-monitor_flow_rate(duration=3, interval=2)
+monitor_flow_rate(duration=60, interval=-1)
